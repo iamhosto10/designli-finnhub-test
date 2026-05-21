@@ -17,8 +17,8 @@ export const initFinnhubWebSocket = () => {
 
     ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:BTCUSDT" }));
     ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:ETHUSDT" }));
-    ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:LTCUSDT" }));
-    ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:XRPUSDT" }));
+    ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:SOLUSDT" }));
+    ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:BNBUSDT" }));
   });
 
   ws.on("message", async (data: WebSocket.RawData) => {

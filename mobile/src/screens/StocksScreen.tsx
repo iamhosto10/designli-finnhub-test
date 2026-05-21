@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,79 +10,157 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LineChart } from "react-native-gifted-charts";
 
-// Agregamos 'label' para mostrar la hora en el Eje X
 interface ChartData {
   value: number;
   label: string;
 }
 
+interface SymbolConfig {
+  symbol: string;
+  shortLabel: string;
+}
+
 const screenWidth = Dimensions.get("window").width;
+const MAX_DATA_POINTS = 20;
+const CHART_UPDATE_INTERVAL_MS = 2000;
+const MAX_RECONNECT_ATTEMPTS = 5;
+
+const SYMBOLS: SymbolConfig[] = [
+  { symbol: "BINANCE:BTCUSDT", shortLabel: "BTCUSDT" },
+  { symbol: "BINANCE:ETHUSDT", shortLabel: "ETHUSDT" },
+  { symbol: "BINANCE:SOLUSDT", shortLabel: "SOLUSDT" },
+  { symbol: "BINANCE:BNBUSDT", shortLabel: "BNBUSDT" },
+];
 
 export default function StocksScreen() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
-  const [activeSymbol, setActiveSymbol] = useState<string>("BINANCE:BTCUSDT");
-  const ws = useRef<WebSocket | null>(null);
+  const [activeSymbol, setActiveSymbol] = useState<SymbolConfig>(SYMBOLS[0]);
 
-  const symbols = [
-    "BINANCE:BTCUSDT",
-    "BINANCE:ETHUSDT",
-    "BINANCE:LTCUSDT",
-    "BINANCE:XRPUSDT",
-  ];
+  const ws = useRef<WebSocket | null>(null);
+  const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttempts = useRef<number>(0);
+  const pendingPrice = useRef<number | null>(null);
+  const chartUpdateTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const firstPrice = useRef<number | null>(null);
+
+  const startChartUpdateTimer = useCallback(() => {
+    chartUpdateTimer.current = setInterval(() => {
+      if (pendingPrice.current === null) return;
+
+      const price = pendingPrice.current;
+      pendingPrice.current = null;
+
+      const now = new Date();
+      const timeString = `${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+      if (firstPrice.current === null) firstPrice.current = price;
+
+      setCurrentPrice(price);
+      setChartData((prev) => {
+        const lastLabeled = [...prev].reverse().find((d) => d.label !== "");
+        const label =
+          !lastLabeled || lastLabeled.label !== timeString ? timeString : "";
+        const next = [...prev, { value: price, label }];
+        return next.length > MAX_DATA_POINTS
+          ? next.slice(next.length - MAX_DATA_POINTS)
+          : next;
+      });
+    }, CHART_UPDATE_INTERVAL_MS);
+  }, []);
 
   useEffect(() => {
     setChartData([]);
     setCurrentPrice(0);
+    reconnectAttempts.current = 0;
+    firstPrice.current = null;
+    pendingPrice.current = null;
 
-    if (ws.current) {
-      ws.current.close();
-    }
+    startChartUpdateTimer();
 
-    const apiKey = process.env.EXPO_PUBLIC_FINNHUB_API_KEY;
-    ws.current = new WebSocket(`wss://ws.finnhub.io?token=${apiKey}`);
+    const connectWebSocket = () => {
+      const apiKey = process.env.EXPO_PUBLIC_FINNHUB_API_KEY;
+      ws.current = new WebSocket(`wss://ws.finnhub.io?token=${apiKey}`);
 
-    ws.current.onopen = () => {
-      ws.current?.send(
-        JSON.stringify({ type: "subscribe", symbol: activeSymbol }),
-      );
-    };
+      ws.current.onopen = () => {
+        console.log(`📈 Conectado a Finnhub para ${activeSymbol.symbol}`);
+        reconnectAttempts.current = 0;
+        ws.current?.send(
+          JSON.stringify({ type: "subscribe", symbol: activeSymbol.symbol }),
+        );
+      };
 
-    ws.current.onmessage = (event) => {
-      const response = JSON.parse(event.data);
-
-      if (response.type === "trade" && response.data) {
-        const latestTrade = response.data[response.data.length - 1];
-        const price = latestTrade.p;
-
-        setCurrentPrice(price);
-
-        // Capturamos la hora actual (ej. "22:49:05")
-        const date = new Date();
-        const timeString = `${date.getHours()}:${date.getMinutes() < 10 ? "0" : ""}${date.getMinutes()}:${date.getSeconds() < 10 ? "0" : ""}${date.getSeconds()}`;
-
-        setChartData((prevData) => {
-          const newDataPoint = { value: price, label: timeString };
-          const updatedData = [...prevData, newDataPoint];
-
-          if (updatedData.length > 20) {
-            // Reducimos a 20 puntos para que el Eje X no se sature
-            return updatedData.slice(updatedData.length - 20);
+      ws.current.onmessage = (event) => {
+        try {
+          const response = JSON.parse(event.data);
+          if (
+            response.type === "trade" &&
+            Array.isArray(response.data) &&
+            response.data.length > 0
+          ) {
+            const latestTrade = response.data[response.data.length - 1];
+            pendingPrice.current = latestTrade.p;
           }
-          return updatedData;
-        });
-      }
+        } catch (e) {
+          console.warn("Failed to parse WS message", e);
+        }
+      };
+
+      ws.current.onerror = (error) => {
+        console.error("❌ Error en WebSocket:", error);
+        ws.current?.close();
+      };
+
+      ws.current.onclose = () => {
+        reconnectAttempts.current += 1;
+
+        if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
+          console.warn(
+            `🚫 Max reconnect attempts reached for ${activeSymbol.symbol}`,
+          );
+          return;
+        }
+
+        const delay = Math.min(3000 * reconnectAttempts.current, 15000);
+        console.log(
+          `🔌 Conexión perdida con ${activeSymbol.symbol}. Reconectando en ${delay / 1000}s...`,
+        );
+        reconnectTimeout.current = setTimeout(connectWebSocket, delay);
+      };
     };
+
+    connectWebSocket();
 
     return () => {
+      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+      if (chartUpdateTimer.current) clearInterval(chartUpdateTimer.current);
       if (ws.current) {
-        ws.current.send(
-          JSON.stringify({ type: "unsubscribe", symbol: activeSymbol }),
-        );
+        ws.current.onclose = null;
+        try {
+          ws.current.send(
+            JSON.stringify({
+              type: "unsubscribe",
+              symbol: activeSymbol.symbol,
+            }),
+          );
+        } catch (_) {}
         ws.current.close();
+        ws.current = null;
       }
     };
   }, [activeSymbol]);
+
+  const chartMemo = React.useMemo(() => {
+    if (chartData.length < 2) return null;
+    const prices = chartData.map((d) => d.value);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const offset = minPrice > 10 ? minPrice - minPrice * 0.0001 : 0;
+    const range = maxPrice - offset;
+    const maxValue = range === 0 ? minPrice * 0.0002 : range * 1.5;
+    const spacing = (screenWidth - 80) / Math.max(1, MAX_DATA_POINTS - 1);
+    return { offset, maxValue, spacing };
+  }, [chartData]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f4f4f5" }}>
@@ -101,22 +179,22 @@ export default function StocksScreen() {
           Transacciones en tiempo real
         </Text>
 
-        {/* Selector de Símbolos (Usando estilos en línea temporalmente por si NativeWind falla) */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ marginBottom: 20 }}
         >
-          {symbols.map((sym) => (
+          {SYMBOLS.map((sym) => (
             <TouchableOpacity
-              key={sym}
+              key={sym.symbol}
               onPress={() => setActiveSymbol(sym)}
               style={{
                 marginRight: 12,
                 paddingHorizontal: 20,
                 paddingVertical: 10,
                 borderRadius: 20,
-                backgroundColor: activeSymbol === sym ? "#18181b" : "#ffffff",
+                backgroundColor:
+                  activeSymbol.symbol === sym.symbol ? "#18181b" : "#ffffff",
                 borderWidth: 1,
                 borderColor: "#e4e4e7",
               }}
@@ -124,10 +202,11 @@ export default function StocksScreen() {
               <Text
                 style={{
                   fontWeight: "600",
-                  color: activeSymbol === sym ? "#ffffff" : "#52525b",
+                  color:
+                    activeSymbol.symbol === sym.symbol ? "#ffffff" : "#52525b",
                 }}
               >
-                {sym.replace("BINANCE:", "")}
+                {sym.shortLabel}
               </Text>
             </TouchableOpacity>
           ))}
@@ -146,7 +225,7 @@ export default function StocksScreen() {
         >
           <View style={{ marginBottom: 24 }}>
             <Text style={{ fontSize: 16, color: "#71717a", fontWeight: "500" }}>
-              {activeSymbol.replace("BINANCE:", "")}
+              {activeSymbol.symbol.replace("BINANCE:", "")}
             </Text>
             <Text
               style={{ fontSize: 32, fontWeight: "bold", color: "#18181b" }}
@@ -155,7 +234,7 @@ export default function StocksScreen() {
             </Text>
           </View>
 
-          {chartData.length < 2 ? (
+          {!chartMemo ? (
             <View
               style={{
                 height: 220,
@@ -172,57 +251,37 @@ export default function StocksScreen() {
             </View>
           ) : (
             <View style={{ alignItems: "center", marginLeft: -10 }}>
-              {(() => {
-                const prices = chartData.map((d) => d.value);
-                const minPrice = Math.min(...prices);
-                const maxPrice = Math.max(...prices);
-
-                // Ajustamos el offset para que la gráfica no sea una línea plana
-                const offset = minPrice > 10 ? minPrice - minPrice * 0.0001 : 0;
-                // Calculamos el rango visible
-                const range = maxPrice - offset;
-                const maxValue = range === 0 ? minPrice * 0.0002 : range * 1.5;
-
-                return (
-                  <LineChart
-                    data={chartData}
-                    height={200}
-                    width={screenWidth - 80}
-                    thickness={2}
-                    color="#3b82f6"
-                    // Configuraciones de los Ejes (¡Aquí está la magia que pedías!)
-                    showVerticalLines
-                    verticalLinesColor="#f4f4f5"
-                    rulesColor="#e4e4e7"
-                    yAxisColor="#e4e4e7"
-                    xAxisColor="#e4e4e7"
-                    yAxisTextStyle={{ color: "#a1a1aa", fontSize: 10 }}
-                    xAxisLabelTextStyle={{
-                      color: "#a1a1aa",
-                      fontSize: 9,
-                      width: 60,
-                      marginLeft: -10,
-                    }}
-                    yAxisLabelPrefix="$"
-                    yAxisOffset={offset}
-                    maxValue={maxValue}
-                    noOfSections={4} // Divide el eje Y en 4 líneas horizontales
-                    // Diseño del área
-                    areaChart
-                    startFillColor="#3b82f6"
-                    endFillColor="#93c5fd"
-                    startOpacity={0.3}
-                    endOpacity={0.0}
-                    // Puntos de datos visibles
-                    dataPointsColor="#1d4ed8"
-                    dataPointsRadius={3}
-                    // Espaciado entre puntos para que respire
-                    spacing={
-                      (screenWidth - 80) / Math.max(1, chartData.length - 1)
-                    }
-                  />
-                );
-              })()}
+              <LineChart
+                data={chartData}
+                height={200}
+                width={screenWidth - 80}
+                thickness={2}
+                color="#3b82f6"
+                showVerticalLines
+                verticalLinesColor="#f4f4f5"
+                rulesColor="#e4e4e7"
+                yAxisColor="#e4e4e7"
+                xAxisColor="#e4e4e7"
+                yAxisTextStyle={{ color: "#a1a1aa", fontSize: 10 }}
+                xAxisLabelTextStyle={{
+                  color: "#a1a1aa",
+                  fontSize: 9,
+                  width: 60,
+                  marginLeft: -10,
+                }}
+                yAxisLabelPrefix="$"
+                yAxisOffset={chartMemo.offset}
+                maxValue={chartMemo.maxValue}
+                noOfSections={4}
+                areaChart
+                startFillColor="#3b82f6"
+                endFillColor="#93c5fd"
+                startOpacity={0.3}
+                endOpacity={0.0}
+                dataPointsColor="#1d4ed8"
+                dataPointsRadius={3}
+                spacing={chartMemo.spacing}
+              />
             </View>
           )}
         </View>

@@ -17,8 +17,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const AVAILABLE_SYMBOLS = [
   "BINANCE:BTCUSDT",
   "BINANCE:ETHUSDT",
-  "BINANCE:LTCUSDT",
-  "BINANCE:XRPUSDT",
+  "BINANCE:SOLUSDT",
+  "BINANCE:BNBUSDT",
 ];
 
 export default function AlertsScreen() {
