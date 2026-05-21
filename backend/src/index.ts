@@ -72,7 +72,7 @@ const startServer = async () => {
 
     initFinnhubWebSocket();
 
-    app.listen(PORT, () => {
+    app.listen(PORT as number, "0.0.0.0", () => {
       console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
     });
   } catch (error) {

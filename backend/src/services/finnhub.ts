@@ -15,9 +15,10 @@ export const initFinnhubWebSocket = () => {
   ws.on("open", () => {
     console.log("📈 Conectado al WebSocket de Finnhub");
 
-    ws.send(JSON.stringify({ type: "subscribe", symbol: "AAPL" }));
-    ws.send(JSON.stringify({ type: "subscribe", symbol: "AMZN" }));
     ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:BTCUSDT" }));
+    ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:ETHUSDT" }));
+    ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:LTCUSDT" }));
+    ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:XRPUSDT" }));
   });
 
   ws.on("message", async (data: WebSocket.RawData) => {
