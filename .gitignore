@@ -1,0 +1,26 @@
+# Dependencias
+node_modules/
+backend/node_modules/
+mobile/node_modules/
+
+# Entornos y Variables (¡CRÍTICO!)
+.env
+backend/.env
+mobile/.env
+mobile/src/.env
+
+
+# Llaves Privadas (¡CRÍTICO!)
+backend/firebase-service-account.json
+mobile/google-services.json
+mobile/android/app/google-services.json
+
+
+# Carpetas compiladas y temporales
+android/
+mobile/android/
+.expo/
+mobile/.expo/
+
+# Archivos de SO
+.DS_Store

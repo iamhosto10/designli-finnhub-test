@@ -1,0 +1,27 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: finnhub_mongo
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+
+  api:
+    build: .
+    container_name: finnhub_backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongodb
+    env_file:
+      - ./backend/.env # <--- DOCKER LEERÁ TU API KEY DESDE AQUÍ
+    environment:
+      # Sobreescribimos solo la URI para que busque la base de datos dentro de Docker
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/finnhub_alerts?authSource=admin
+
+volumes:
+  mongo_data:

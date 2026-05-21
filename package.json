@@ -1,0 +1,20 @@
+{
+  "name": "designli-tech-test",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "mobile"
+  ],
+  "scripts": {
+    "start:backend": "npm run start --workspace=backend",
+    "dev:backend": "npm run dev --workspace=backend"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
+  "dependencies": {
+    "expo": "~55.0.25",
+    "react": "19.2.0",
+    "react-native": "0.83.6",
+    "react-native-worklets": "^0.7.4"
+  }
+}

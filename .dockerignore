@@ -1,0 +1,13 @@
+# Ignorar dependencias locales
+node_modules
+backend/node_modules
+mobile/node_modules
+
+# Ignorar la aplicación móvil por completo
+mobile
+android
+.expo
+
+# Ignorar archivos de Git y variables de entorno locales
+.git
+.env
