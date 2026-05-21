@@ -49,31 +49,23 @@ export const checkAlerts = async (symbol: string, currentPrice: number) => {
       symbol: symbol,
       isActive: true,
       targetPrice: { $lte: currentPrice },
-    });
+    }).populate("userId");
 
     for (const alert of triggeredAlerts) {
-      const lockedAlert = await Alert.findOneAndUpdate(
-        { _id: alert._id, isActive: true },
-        { $set: { isActive: false } },
-        { new: true },
-      ).populate("userId");
-
-      if (!lockedAlert) {
-        continue;
-      }
-
       console.log(
-        `🚨 ¡ALERTA DISPARADA! ${symbol} alcanzó $${currentPrice} (Objetivo: $${lockedAlert.targetPrice})`,
+        `🚨 ¡ALERTA DISPARADA! ${symbol} alcanzó $${currentPrice} (Objetivo: $${alert.targetPrice})`,
       );
 
-      const user: any = lockedAlert.userId;
+      alert.isActive = false;
+      await alert.save();
+      const user: any = alert.userId;
       const fcmToken = user?.fcmToken;
 
       if (fcmToken) {
         const message = {
           notification: {
             title: "📈 ¡Objetivo Alcanzado!",
-            body: `El activo ${symbol.replace("BINANCE:", "")} acaba de superar tu precio objetivo de $${lockedAlert.targetPrice}. Precio actual: $${currentPrice}`,
+            body: `El activo ${symbol.replace("BINANCE:", "")} acaba de superar tu precio objetivo de $${alert.targetPrice}. Precio actual: $${currentPrice}`,
           },
           token: fcmToken,
         };
