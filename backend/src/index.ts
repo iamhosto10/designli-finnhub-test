@@ -15,10 +15,17 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const serviceAccountPath = path.resolve(
-  __dirname,
-  "../firebase-service-account.json",
-);
+let serviceAccountPath;
+
+if (process.env.RENDER) {
+  serviceAccountPath = "/etc/secrets/firebase-service-account.json";
+} else {
+  serviceAccountPath = path.resolve(
+    __dirname,
+    "../firebase-service-account.json",
+  );
+}
+
 const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
 
 admin.initializeApp({
