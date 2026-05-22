@@ -46,9 +46,6 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Servidor funcionando correctamente" });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/alerts", alertRoutes);
-
 app.post("/api/alerts/simulate-price", async (req, res) => {
   try {
     const { symbol, price } = req.body;
