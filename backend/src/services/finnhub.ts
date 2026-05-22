@@ -4,7 +4,14 @@ import Alert from "../models/Alert.js";
 import * as admin from "firebase-admin";
 import { notificationQueue } from "../queues/notificationQueue.js";
 
+let reconnectTimeout: NodeJS.Timeout | null = null;
+
 export const initFinnhubWebSocket = () => {
+  if (reconnectTimeout) {
+    clearTimeout(reconnectTimeout);
+    reconnectTimeout = null;
+  }
+
   const token = process.env.FINNHUB_API_KEY;
   if (!token) {
     console.error("❌ Falta FINNHUB_API_KEY en el archivo .env");
@@ -35,11 +42,12 @@ export const initFinnhubWebSocket = () => {
 
   ws.on("error", (error) => {
     console.error("❌ Error en WebSocket de Finnhub:", error);
+    ws.close();
   });
 
   ws.on("close", () => {
-    // console.log("🔌 Desconectado de Finnhub. Intentando reconectar en 5s...");
-    setTimeout(initFinnhubWebSocket, 5000);
+    // console.log("🔌 Desconectado de Finnhub (Backend). Intentando reconectar en 5s...");
+    reconnectTimeout = setTimeout(initFinnhubWebSocket, 5000);
   });
 };
 
