@@ -2,6 +2,7 @@ import WebSocket from "ws";
 import { getMessaging } from "firebase-admin/messaging";
 import Alert from "../models/Alert.js";
 import * as admin from "firebase-admin";
+import { notificationQueue } from "../queues/notificationQueue.js";
 
 export const initFinnhubWebSocket = () => {
   const token = process.env.FINNHUB_API_KEY;
@@ -24,7 +25,6 @@ export const initFinnhubWebSocket = () => {
   ws.on("message", async (data: WebSocket.RawData) => {
     const response = JSON.parse(data.toString());
 
-    // Finnhub envía los precios bajo el tipo 'trade'
     if (response.type === "trade") {
       for (const trade of response.data) {
         const { s: symbol, p: currentPrice } = trade;
@@ -38,7 +38,7 @@ export const initFinnhubWebSocket = () => {
   });
 
   ws.on("close", () => {
-    console.log("🔌 Desconectado de Finnhub. Intentando reconectar en 5s...");
+    // console.log("🔌 Desconectado de Finnhub. Intentando reconectar en 5s...");
     setTimeout(initFinnhubWebSocket, 5000);
   });
 };
@@ -70,23 +70,27 @@ export const checkAlerts = async (symbol: string, currentPrice: number) => {
       const fcmToken = user?.fcmToken;
 
       if (fcmToken) {
-        const message = {
-          notification: {
+        await notificationQueue.add(
+          "send-push",
+          {
+            fcmToken,
             title: "📈 ¡Objetivo Alcanzado!",
             body: `El activo ${symbol.replace("BINANCE:", "")} acaba de superar tu precio objetivo de $${lockedAlert.targetPrice}. Precio actual: $${currentPrice}`,
           },
-          token: fcmToken,
-        };
+          {
+            removeOnComplete: true,
+            attempts: 3,
+            backoff: {
+              type: "fixed",
+              delay: 5000,
+            },
+          },
+        );
 
-        try {
-          const response = await getMessaging().send(message);
-          console.log("✅ Notificación Push enviada con éxito:", response);
-        } catch (pushError) {
-          console.error("❌ Error enviando Notificación Push:", pushError);
-        }
+        console.log("📨 Tarea de notificación delegada a la cola de Redis");
       } else {
         console.log(
-          `⚠️ El usuario no tiene un fcmToken guardado. No se envió Push.`,
+          `⚠️ El usuario no tiene un fcmToken guardado. No se encoló la Push.`,
         );
       }
     }

@@ -9,6 +9,11 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: password
+  redis:
+    image: redis:alpine
+    container_name: finnhub_redis
+    ports:
+      - "6379:6379"
 
   api:
     build: .
@@ -17,11 +22,13 @@ services:
       - "3000:3000"
     depends_on:
       - mongodb
+      - redis
     env_file:
-      - ./backend/.env # <--- DOCKER LEERÁ TU API KEY DESDE AQUÍ
+      - ./backend/.env
     environment:
-      # Sobreescribimos solo la URI para que busque la base de datos dentro de Docker
       - MONGO_URI=mongodb://admin:password@mongodb:27017/finnhub_alerts?authSource=admin
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
 
 volumes:
   mongo_data:

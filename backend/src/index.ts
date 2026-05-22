@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import authRoutes from "./routes/authRoutes.js";
 import alertRoutes from "./routes/alertRoutes.js";
 import { initFinnhubWebSocket, checkAlerts } from "./services/finnhub.js";
+import "./queues/notificationQueue.js";
 
 dotenv.config();
 
