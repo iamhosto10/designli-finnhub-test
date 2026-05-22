@@ -2,9 +2,14 @@ import { Queue, Worker, Job } from "bullmq";
 import { getMessaging } from "firebase-admin/messaging";
 import { Redis } from "ioredis";
 
-const connection = new Redis({
-  host: process.env.REDIS_HOST || "localhost",
-  port: parseInt(process.env.REDIS_PORT || "6379"),
+const connectionOptions = process.env.REDIS_URL
+  ? process.env.REDIS_URL
+  : {
+      host: process.env.REDIS_HOST || "localhost",
+      port: parseInt(process.env.REDIS_PORT || "6379"),
+    };
+
+const connection = new Redis(connectionOptions as any, {
   maxRetriesPerRequest: null,
 });
 
