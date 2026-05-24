@@ -15,9 +15,11 @@ export const createAlert = async (
     });
 
     await newAlert.save();
-    res.status(201).json({ message: "Alerta creada", alert: newAlert });
+    res
+      .status(201)
+      .json({ message: "Alert created successfully", alert: newAlert });
   } catch (error) {
-    res.status(500).json({ message: "Error creando la alerta", error });
+    res.status(500).json({ message: "Error creating alert", error });
   }
 };
 
@@ -33,6 +35,6 @@ export const getUserAlerts = async (
     });
     res.status(200).json(alerts);
   } catch (error) {
-    res.status(500).json({ message: "Error obteniendo alertas", error });
+    res.status(500).json({ message: "Error getting alerts", error });
   }
 };

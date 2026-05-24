@@ -14,14 +14,14 @@ export const initFinnhubWebSocket = () => {
 
   const token = process.env.FINNHUB_API_KEY;
   if (!token) {
-    console.error("❌ Falta FINNHUB_API_KEY en el archivo .env");
+    console.error("❌ Missing FINNHUB_API_KEY in the .env file");
     return;
   }
 
   const ws = new WebSocket(`wss://ws.finnhub.io?token=${token}`);
 
   ws.on("open", () => {
-    console.log("📈 Conectado al WebSocket de Finnhub");
+    console.log("📈 Connected to Finnhub WebSocket");
 
     ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:BTCUSDT" }));
     ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:ETHUSDT" }));
@@ -41,12 +41,11 @@ export const initFinnhubWebSocket = () => {
   });
 
   ws.on("error", (error) => {
-    console.error("❌ Error en WebSocket de Finnhub:", error);
+    console.error("❌ Error in Finnhub WebSocket:", error);
     ws.close();
   });
 
   ws.on("close", () => {
-    // console.log("🔌 Desconectado de Finnhub (Backend). Intentando reconectar en 5s...");
     reconnectTimeout = setTimeout(initFinnhubWebSocket, 5000);
   });
 };
@@ -71,7 +70,7 @@ export const checkAlerts = async (symbol: string, currentPrice: number) => {
       }
 
       console.log(
-        `🚨 ¡ALERTA DISPARADA! ${symbol} alcanzó $${currentPrice} (Objetivo: $${lockedAlert.targetPrice})`,
+        `🚨 Target Triggered! ${symbol} reached $${currentPrice} (Target: $${lockedAlert.targetPrice})`,
       );
 
       const user: any = lockedAlert.userId;
@@ -82,8 +81,8 @@ export const checkAlerts = async (symbol: string, currentPrice: number) => {
           "send-push",
           {
             fcmToken,
-            title: "📈 ¡Objetivo Alcanzado!",
-            body: `El activo ${symbol.replace("BINANCE:", "")} acaba de superar tu precio objetivo de $${lockedAlert.targetPrice}. Precio actual: $${currentPrice}`,
+            title: "📈 Target Reached!",
+            body: `The asset ${symbol.replace("BINANCE:", "")} has just surpassed your target price of $${lockedAlert.targetPrice}. Current price: $${currentPrice}`,
           },
           {
             removeOnComplete: true,
@@ -95,14 +94,16 @@ export const checkAlerts = async (symbol: string, currentPrice: number) => {
           },
         );
 
-        console.log("📨 Tarea de notificación delegada a la cola de Redis");
+        console.log(
+          `📱 Push notification queued for user ${user.email} with token ${fcmToken}`,
+        );
       } else {
         console.log(
-          `⚠️ El usuario no tiene un fcmToken guardado. No se encoló la Push.`,
+          `⚠️ The user does not have an fcmToken saved. Push notification not queued.`,
         );
       }
     }
   } catch (error) {
-    console.error("Error verificando alertas:", error);
+    console.error("Error checking alerts:", error);
   }
 };

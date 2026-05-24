@@ -29,9 +29,9 @@ const worker = new Worker(
 
     try {
       const response = await getMessaging().send(message);
-      console.log(`✅ [Worker] Push enviada con éxito. ID: ${response}`);
+      console.log(`✅ [Worker] Push sent successfully. ID: ${response}`);
     } catch (error) {
-      console.error(`❌ [Worker] Error en Firebase:`, error);
+      console.error(`❌ [Worker] Error in Firebase:`, error);
 
       throw error;
     }
@@ -40,9 +40,9 @@ const worker = new Worker(
 );
 
 worker.on("completed", (job) => {
-  console.log(`🚀 [Worker] Trabajo ${job.id} completado.`);
+  console.log(`🚀 [Worker] Job ${job.id} completed.`);
 });
 
 worker.on("failed", (job, err) => {
-  console.error(`⚠️ [Worker] Trabajo falló:`, err.message);
+  console.error(`⚠️ [Worker] Job failed:`, err.message);
 });

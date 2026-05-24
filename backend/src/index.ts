@@ -43,7 +43,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/alerts", alertRoutes);
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "OK", message: "Servidor funcionando correctamente" });
+  res.json({ status: "OK", message: "Server is running successfully" });
 });
 
 app.post("/api/alerts/simulate-price", async (req, res) => {
@@ -55,7 +55,7 @@ app.post("/api/alerts/simulate-price", async (req, res) => {
 
     res.json({
       success: true,
-      message: `Simulación ejecutada para ${symbol} a $${price}`,
+      message: `Simulation executed for ${symbol} at $${price}`,
     });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -66,12 +66,12 @@ const startServer = async () => {
   try {
     const mongoUri = process.env.MONGO_URI as string;
     await mongoose.connect(mongoUri);
-    console.log("📦 Conectado a MongoDB exitosamente");
+    console.log("📦 Connected to MongoDB successfully");
 
     initFinnhubWebSocket();
 
     app.listen(PORT as number, "0.0.0.0", () => {
-      console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+      console.log(`🚀 Server running at http://localhost:${PORT}`);
     });
   } catch (error) {
     console.error("❌ Error conectando a la base de datos:", error);
