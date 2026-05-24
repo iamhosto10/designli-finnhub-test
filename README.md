@@ -40,14 +40,22 @@ This will spin up both the MongoDB instance and the Node.js API within an isolat
     ```
 
 ### 2. Mobile Setup
-1. Navigate to the mobile directory.
-2. Run `npm install` to install dependencies.
-3. Download the `google-services.json` file (provided via the delivery email) and place it directly into the `mobile/` root directory. (Crucial for Firebase Cloud Messaging on Android).
-4. Copy .env.example to .env (if applicable) and update the API URL to point to your backend.
-4. Run the app:
-    ```bash
-   npx expo start --clear
-    ```
+1. Navigate to the `mobile` directory.
+2. Run `npm install`.
+3. Place `google-services.json` in `mobile/` root.
+4. Copy `.env.example` to `.env` and set your API URL.
+
+> ⚠️ This project uses @react-native-firebase which requires native modules.
+> Expo Go is NOT supported. Use one of the following:
+
+**Option A – Install the prebuilt APK (recommended for reviewers):**
+Download the APK from the WeTransfer link provided via email.
+
+**Option B – Run from source:**
+```bash
+npx expo run:android
+```
+Requires Android SDK and a connected device or emulator.
 
 ## 🧠 Technical Decisions & Edge Cases Handled
 
