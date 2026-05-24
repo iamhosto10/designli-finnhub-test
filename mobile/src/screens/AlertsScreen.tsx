@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -21,6 +20,13 @@ const AVAILABLE_SYMBOLS = [
   "BINANCE:BNBUSDT",
 ];
 
+const SYMBOL_COLORS: Record<string, string> = {
+  "BINANCE:BTCUSDT": "#F7931A",
+  "BINANCE:ETHUSDT": "#627EEA",
+  "BINANCE:SOLUSDT": "#9945FF",
+  "BINANCE:BNBUSDT": "#F3BA2F",
+};
+
 export default function AlertsScreen() {
   const [symbol, setSymbol] = useState(AVAILABLE_SYMBOLS[0]);
   const [targetPrice, setTargetPrice] = useState("");
@@ -31,9 +37,7 @@ export default function AlertsScreen() {
   useEffect(() => {
     const fetchUserId = async () => {
       const storedId = await AsyncStorage.getItem("userId");
-      if (storedId) {
-        setUserId(storedId);
-      }
+      if (storedId) setUserId(storedId);
     };
     fetchUserId();
   }, []);
@@ -41,8 +45,8 @@ export default function AlertsScreen() {
   const handleCreateAlert = async () => {
     if (!targetPrice.trim() || isNaN(Number(targetPrice))) {
       Alert.alert(
-        "Precio inválido",
-        "Por favor ingresa un precio objetivo numérico válido.",
+        "Invalid price",
+        "Please enter a valid numeric target price.",
       );
       return;
     }
@@ -54,9 +58,7 @@ export default function AlertsScreen() {
 
       const response = await fetch(`${apiUrl}/api/alerts`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: userId,
           symbol: symbol,
@@ -68,230 +70,172 @@ export default function AlertsScreen() {
 
       if (response.ok) {
         Alert.alert(
-          "¡Éxito!",
-          `Alerta creada para ${symbol.replace("BINANCE:", "")} a $${targetPrice}`,
+          "Alert Created!",
+          `You'll be notified when ${symbol.replace("BINANCE:", "")} reaches $${targetPrice}`,
         );
         setTargetPrice("");
       } else {
-        Alert.alert("Error", data.message || "No se pudo crear la alerta");
+        Alert.alert("Error", data.message || "Could not create alert");
       }
     } catch (error) {
       console.error(error);
-      Alert.alert("Error de conexión", "No pudimos conectar con el servidor.");
+      Alert.alert("Connection Error", "Could not connect to the server.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const activeColor = SYMBOL_COLORS[symbol] || "#3b82f6";
+  const shortLabel = symbol.replace("BINANCE:", "");
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex-1 bg-slate-950">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+        className="flex-1"
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContainer}
+          contentContainerStyle={{ padding: 20 }}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>Mis Alertas</Text>
-          <Text style={styles.subtitle}>
-            Te notificaremos cuando se alcance el precio.
-          </Text>
+          <View className="mb-6">
+            <Text className="text-white text-2xl font-bold tracking-tight">
+              Price Alerts
+            </Text>
+            <Text className="text-slate-400 text-sm mt-1">
+              Get notified when your target is hit
+            </Text>
+          </View>
 
-          <View style={styles.card}>
-            {/* Selector de Símbolo (Custom Dropdown) */}
-            <View style={{ marginBottom: 20, zIndex: 50 }}>
-              <Text style={styles.label}>Activo a monitorear</Text>
+          <View className="flex-row items-center mb-6 bg-slate-900 rounded-2xl px-4 py-3 border border-slate-800">
+            <View
+              className="w-2.5 h-2.5 rounded-full mr-3"
+              style={{ backgroundColor: activeColor }}
+            />
+            <Text className="text-white font-semibold text-base flex-1">
+              {shortLabel}
+            </Text>
+            <Text className="text-slate-500 text-xs uppercase tracking-widest">
+              Active asset
+            </Text>
+          </View>
+
+          <View
+            className="bg-slate-900 rounded-3xl p-5 border border-slate-800"
+            style={{ zIndex: 10 }}
+          >
+            <View className="mb-5" style={{ zIndex: 50 }}>
+              <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
+                Asset to monitor
+              </Text>
 
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => setIsDropdownOpen(!isDropdownOpen)}
-                style={styles.dropdownSelector}
+                className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 flex-row justify-between items-center"
               >
-                <Text style={styles.dropdownText}>
-                  {symbol.replace("BINANCE:", "")}
-                </Text>
-                <Text style={styles.dropdownArrow}>
+                <View className="flex-row items-center gap-2.5">
+                  <View
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: activeColor }}
+                  />
+                  <Text className="text-white text-base font-semibold ml-2">
+                    {shortLabel}
+                  </Text>
+                </View>
+                <Text className="text-slate-500 text-xs">
                   {isDropdownOpen ? "▲" : "▼"}
                 </Text>
               </TouchableOpacity>
 
-              {/* Lista desplegable */}
               {isDropdownOpen && (
-                <View style={styles.dropdownMenu}>
-                  {AVAILABLE_SYMBOLS.map((item, index) => (
-                    <TouchableOpacity
-                      key={item}
-                      style={[
-                        styles.dropdownItem,
-                        index !== AVAILABLE_SYMBOLS.length - 1 &&
-                          styles.dropdownItemBorder,
-                        symbol === item && styles.dropdownItemActive,
-                      ]}
-                      onPress={() => {
-                        setSymbol(item);
-                        setIsDropdownOpen(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownItemText,
-                          symbol === item && styles.dropdownItemTextActive,
-                        ]}
+                <View
+                  className="absolute left-0 right-0 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden"
+                  style={{ top: 76, zIndex: 100 }}
+                >
+                  {AVAILABLE_SYMBOLS.map((item, index) => {
+                    const itemLabel = item.replace("BINANCE:", "");
+                    const itemColor = SYMBOL_COLORS[item] || "#3b82f6";
+                    const isActive = symbol === item;
+                    return (
+                      <TouchableOpacity
+                        key={item}
+                        className={`px-4 py-3.5 flex-row items-center ${
+                          index !== AVAILABLE_SYMBOLS.length - 1
+                            ? "border-b border-slate-700"
+                            : ""
+                        } ${isActive ? "bg-slate-700" : ""}`}
+                        onPress={() => {
+                          setSymbol(item);
+                          setIsDropdownOpen(false);
+                        }}
                       >
-                        {item.replace("BINANCE:", "")}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        <View
+                          className="w-2 h-2 rounded-full mr-3"
+                          style={{ backgroundColor: itemColor }}
+                        />
+                        <Text
+                          className={`text-base font-medium ${
+                            isActive ? "text-white" : "text-slate-300"
+                          }`}
+                        >
+                          {itemLabel}
+                        </Text>
+                        {isActive && (
+                          <Text className="ml-auto text-blue-400 text-xs font-semibold">
+                            Selected
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               )}
             </View>
 
-            {/* Input de Precio */}
-            <View style={{ marginBottom: 24 }}>
-              <Text style={styles.label}>Precio Objetivo ($)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ej. 65000.50"
-                placeholderTextColor="#a1a1aa"
-                value={targetPrice}
-                onChangeText={setTargetPrice}
-                keyboardType="numeric"
-                onFocus={() => setIsDropdownOpen(false)}
-              />
+            <View className="mb-6">
+              <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
+                Target Price (USD)
+              </Text>
+              <View className="relative">
+                <Text className="absolute left-4 top-4 text-slate-400 text-base z-10">
+                  $
+                </Text>
+                <TextInput
+                  className="bg-slate-800 border border-slate-700 rounded-xl pl-8 pr-4 py-4 text-white text-base"
+                  placeholder="0.00"
+                  placeholderTextColor="#475569"
+                  value={targetPrice}
+                  onChangeText={setTargetPrice}
+                  keyboardType="numeric"
+                  onFocus={() => setIsDropdownOpen(false)}
+                />
+              </View>
             </View>
 
-            {/* Botón de Submit */}
             <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
+              className={`rounded-xl py-4 items-center ${isLoading ? "bg-blue-400" : "bg-blue-500"}`}
               onPress={handleCreateAlert}
               disabled={isLoading}
+              activeOpacity={0.85}
             >
               {isLoading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.buttonText}>Crear Alerta</Text>
+                <Text className="text-white text-base font-bold tracking-wide">
+                  Set Alert
+                </Text>
               )}
             </TouchableOpacity>
+          </View>
+          <View className="mt-4 flex-row items-center px-1">
+            <Text className="text-slate-600 text-xs leading-relaxed">
+              🔔 Push notifications will be sent when the price target is
+              reached.
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f4f4f5", // Mismo fondo que StocksScreen
-  },
-  scrollContainer: {
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#18181b",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#71717a",
-    marginBottom: 20,
-  },
-  card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 24,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-    zIndex: 1, // Necesario para que el dropdown flote por encima del resto
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#52525b",
-    marginBottom: 8,
-  },
-  dropdownSelector: {
-    backgroundColor: "#f4f4f5",
-    borderWidth: 1,
-    borderColor: "#e4e4e7",
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  dropdownText: {
-    fontSize: 16,
-    color: "#18181b",
-    fontWeight: "500",
-  },
-  dropdownArrow: {
-    color: "#a1a1aa",
-    fontSize: 12,
-  },
-  dropdownMenu: {
-    position: "absolute",
-    top: 80,
-    left: 0,
-    right: 0,
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#e4e4e7",
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-    zIndex: 100,
-  },
-  dropdownItem: {
-    padding: 16,
-  },
-  dropdownItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#f4f4f5",
-  },
-  dropdownItemActive: {
-    backgroundColor: "#eff6ff",
-  },
-  dropdownItemText: {
-    fontSize: 16,
-    color: "#3f3f46",
-  },
-  dropdownItemTextActive: {
-    color: "#2563eb",
-    fontWeight: "bold",
-  },
-  input: {
-    backgroundColor: "#f4f4f5",
-    borderWidth: 1,
-    borderColor: "#e4e4e7",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: "#18181b",
-  },
-  button: {
-    backgroundColor: "#3b82f6",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    shadowColor: "#3b82f6",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  buttonDisabled: {
-    backgroundColor: "#93c5fd",
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-});

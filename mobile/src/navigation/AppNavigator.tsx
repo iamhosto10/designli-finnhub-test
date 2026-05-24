@@ -17,8 +17,26 @@ const MainTabs = () => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
       headerShown: false,
+
+      tabBarStyle: {
+        backgroundColor: "#0f172a",
+        borderTopColor: "#1e293b",
+        borderTopWidth: 1,
+        height: 64,
+        paddingBottom: 10,
+        paddingTop: 8,
+      },
+
       tabBarActiveTintColor: "#3b82f6",
-      tabBarInactiveTintColor: "gray",
+      tabBarInactiveTintColor: "#475569",
+
+      tabBarLabelStyle: {
+        fontSize: 11,
+        fontWeight: "600",
+        letterSpacing: 0.3,
+      },
+
+      tabBarActiveBackgroundColor: "transparent",
 
       tabBarIcon: ({ color, size, focused }) => {
         let iconName:
@@ -33,19 +51,21 @@ const MainTabs = () => (
           iconName = focused ? "notifications" : "notifications-outline";
         }
 
-        return <Ionicons name={iconName} size={size} color={color} />;
+        return (
+          <Ionicons name={iconName} size={focused ? 24 : 22} color={color} />
+        );
       },
     })}
   >
     <Tab.Screen
       name="Stocks"
       component={StocksScreen}
-      options={{ tabBarLabel: "Mercado" }}
+      options={{ tabBarLabel: "Market" }}
     />
     <Tab.Screen
       name="Alerts"
       component={AlertsScreen}
-      options={{ tabBarLabel: "Mis Alertas" }}
+      options={{ tabBarLabel: "My Alerts" }}
     />
   </Tab.Navigator>
 );

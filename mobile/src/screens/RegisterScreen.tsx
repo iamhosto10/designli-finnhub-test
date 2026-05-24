@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -20,12 +19,12 @@ export default function RegisterScreen({ navigation }: any) {
 
   const handleRegister = async () => {
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert("Campos incompletos", "Por favor llena todos los espacios.");
+      Alert.alert("Incomplete fields", "Please fill in all fields.");
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Las contraseñas no coinciden.");
+      Alert.alert("Error", "Passwords do not match.");
       return;
     }
 
@@ -36,9 +35,7 @@ export default function RegisterScreen({ navigation }: any) {
 
       const response = await fetch(`${apiUrl}/api/auth/register`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           password: password,
@@ -49,21 +46,21 @@ export default function RegisterScreen({ navigation }: any) {
 
       if (response.ok) {
         Alert.alert(
-          "¡Registro Exitoso!",
-          "Tu cuenta ha sido creada. Ahora puedes iniciar sesión.",
+          "Account Created!",
+          "Your account is ready. You can now sign in.",
           [{ text: "OK", onPress: () => navigation.navigate("Login") }],
         );
       } else {
         Alert.alert(
-          "Error de Registro",
-          data.message || "No se pudo crear el usuario.",
+          "Registration Error",
+          data.message || "Could not create account.",
         );
       }
     } catch (error) {
       console.error(error);
       Alert.alert(
-        "Error de conexión",
-        "Hubo un problema al conectar con el servidor.",
+        "Connection Error",
+        "There was a problem connecting to the server.",
       );
     } finally {
       setIsLoading(false);
@@ -71,26 +68,29 @@ export default function RegisterScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex-1 bg-slate-950">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
+        className="flex-1"
       >
-        <View style={styles.content}>
-          <View style={styles.headerContainer}>
-            <Text style={styles.title}>Crear Cuenta</Text>
-            <Text style={styles.subtitle}>
-              Regístrate para empezar a monitorear
+        <View className="flex-1 justify-center px-6">
+          <View className="items-center mb-10">
+            <Text className="text-white text-3xl font-bold tracking-tight">
+              Create Account
+            </Text>
+            <Text className="text-slate-400 text-sm mt-1.5 tracking-wide">
+              Start monitoring markets in seconds
             </Text>
           </View>
-
-          <View style={styles.card}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Correo Electrónico</Text>
+          <View className="bg-slate-900 rounded-3xl p-6 border border-slate-800">
+            <View className="mb-4">
+              <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
+                Email
+              </Text>
               <TextInput
-                style={styles.input}
-                placeholder="ejemplo@designli.co"
-                placeholderTextColor="#a1a1aa"
+                className="bg-slate-800 rounded-xl px-4 py-4 text-white text-base border border-slate-700"
+                placeholder="you@example.com"
+                placeholderTextColor="#475569"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -99,24 +99,28 @@ export default function RegisterScreen({ navigation }: any) {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Contraseña</Text>
+            <View className="mb-4">
+              <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
+                Password
+              </Text>
               <TextInput
-                style={styles.input}
-                placeholder="Mínimo 6 caracteres"
-                placeholderTextColor="#a1a1aa"
+                className="bg-slate-800 rounded-xl px-4 py-4 text-white text-base border border-slate-700"
+                placeholder="Min. 6 characters"
+                placeholderTextColor="#475569"
                 secureTextEntry
                 value={password}
                 onChangeText={setPassword}
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirmar Contraseña</Text>
+            <View className="mb-6">
+              <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
+                Confirm Password
+              </Text>
               <TextInput
-                style={styles.input}
-                placeholder="Repite tu contraseña"
-                placeholderTextColor="#a1a1aa"
+                className="bg-slate-800 rounded-xl px-4 py-4 text-white text-base border border-slate-700"
+                placeholder="Repeat your password"
+                placeholderTextColor="#475569"
                 secureTextEntry
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -124,23 +128,27 @@ export default function RegisterScreen({ navigation }: any) {
             </View>
 
             <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
+              className={`rounded-xl py-4 items-center ${isLoading ? "bg-blue-400" : "bg-blue-500"}`}
               onPress={handleRegister}
               disabled={isLoading}
+              activeOpacity={0.85}
             >
               {isLoading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.buttonText}>Registrarse</Text>
+                <Text className="text-white text-base font-bold tracking-wide">
+                  Create Account
+                </Text>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.linkButton}
+              className="mt-5 items-center"
               onPress={() => navigation.navigate("Login")}
             >
-              <Text style={styles.linkText}>
-                ¿Ya tienes cuenta? Inicia sesión
+              <Text className="text-slate-500 text-sm">
+                Already have an account?{" "}
+                <Text className="text-blue-400 font-semibold">Sign in</Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -149,87 +157,3 @@ export default function RegisterScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f4f4f5",
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  headerContainer: {
-    marginBottom: 24,
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#18181b",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#71717a",
-  },
-  card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 24,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#52525b",
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: "#f4f4f5",
-    borderWidth: 1,
-    borderColor: "#e4e4e7",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: "#18181b",
-  },
-  button: {
-    backgroundColor: "#3b82f6",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    marginTop: 12,
-    shadowColor: "#3b82f6",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  buttonDisabled: {
-    backgroundColor: "#93c5fd",
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  linkButton: {
-    marginTop: 20,
-    alignItems: "center",
-  },
-  linkText: {
-    color: "#71717a",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-});
