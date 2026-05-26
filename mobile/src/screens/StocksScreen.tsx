@@ -6,13 +6,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LineChart } from "react-native-gifted-charts";
 import { useMarketStore, SYMBOLS } from "../store/useMarketStore";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation } from "@react-navigation/native";
+import { useLogout } from "../hooks/useLogout";
 
 const screenWidth = Dimensions.get("window").width;
 const MAX_DATA_POINTS = 20;
@@ -25,16 +23,10 @@ const SYMBOL_COLORS: Record<string, string> = {
 };
 
 export default function StocksScreen() {
-  const navigation = useNavigation<any>();
+  const { handleLogout } = useLogout();
 
-  const {
-    activeSymbol,
-    currentPrice,
-    chartData,
-    setActiveSymbol,
-    connect,
-    disconnect,
-  } = useMarketStore();
+  const { activeSymbol, currentPrice, chartData, setActiveSymbol, connect } =
+    useMarketStore();
 
   useEffect(() => {
     connect();
@@ -52,26 +44,6 @@ export default function StocksScreen() {
     return { offset, maxValue, spacing };
   }, [chartData]);
 
-  const handleLogout = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          disconnect();
-          await AsyncStorage.removeItem("userToken");
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "Login" }],
-          });
-        },
-      },
-    ]);
-  };
-
-  const accentColor = SYMBOL_COLORS[activeSymbol.symbol] || "#3b82f6";
-
   const priceChange = useMemo(() => {
     if (chartData.length < 2) return null;
     const first = chartData[0].value;
@@ -81,9 +53,12 @@ export default function StocksScreen() {
     return { diff, pct, positive: diff >= 0 };
   }, [chartData]);
 
+  const accentColor = SYMBOL_COLORS[activeSymbol.symbol] || "#3b82f6";
+
   return (
     <SafeAreaView className="flex-1 bg-slate-950">
       <ScrollView contentContainerStyle={{ padding: 20 }}>
+        {/* Header */}
         <View className="flex-row justify-between items-center mb-6">
           <View>
             <Text className="text-white text-2xl font-bold tracking-tight">
@@ -93,15 +68,16 @@ export default function StocksScreen() {
               Real-time trades
             </Text>
           </View>
-
           <TouchableOpacity
             onPress={handleLogout}
-            className="bg-red-950 border border-red-900 px-3 py-2 rounded-xl flex-row items-center"
+            className="bg-red-950 border border-red-900 px-3 py-2 rounded-xl"
             activeOpacity={0.8}
           >
             <Text className="text-red-400 font-semibold text-xs">Sign Out</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Symbol selector */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -138,6 +114,7 @@ export default function StocksScreen() {
           })}
         </ScrollView>
 
+        {/* Chart card */}
         <View className="bg-slate-900 rounded-3xl p-5 border border-slate-800">
           <View className="flex-row items-start justify-between mb-5">
             <View>
@@ -146,12 +123,14 @@ export default function StocksScreen() {
               </Text>
               <Text className="text-white text-4xl font-bold tracking-tight">
                 {currentPrice > 0
-                  ? `$${currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  ? `$${currentPrice.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}`
                   : "---"}
               </Text>
             </View>
 
-            {/* Change badge */}
             {priceChange && (
               <View
                 className={`px-3 py-1.5 rounded-xl mt-1 ${

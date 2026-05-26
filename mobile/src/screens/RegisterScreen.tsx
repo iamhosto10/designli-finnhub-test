@@ -1,71 +1,27 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRegister } from "../hooks/useRegister";
 
 export default function RegisterScreen({ navigation }: any) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleRegister = async () => {
-    if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert("Incomplete fields", "Please fill in all fields.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match.");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-
-      const response = await fetch(`${apiUrl}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          password: password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        Alert.alert(
-          "Account Created!",
-          "Your account is ready. You can now sign in.",
-          [{ text: "OK", onPress: () => navigation.navigate("Login") }],
-        );
-      } else {
-        Alert.alert(
-          "Registration Error",
-          data.message || "Could not create account.",
-        );
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert(
-        "Connection Error",
-        "There was a problem connecting to the server.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
+    confirmPassword,
+    setConfirmPassword,
+    isLoading,
+    handleRegister,
+  } = useRegister(navigation);
 
   return (
     <SafeAreaView className="flex-1 bg-slate-950">
@@ -82,6 +38,7 @@ export default function RegisterScreen({ navigation }: any) {
               Start monitoring markets in seconds
             </Text>
           </View>
+
           <View className="bg-slate-900 rounded-3xl p-6 border border-slate-800">
             <View className="mb-4">
               <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">

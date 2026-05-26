@@ -47,7 +47,6 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
   setActiveSymbol: (sym) => {
     if (get().activeSymbol.symbol === sym.symbol) return;
-
     set({ activeSymbol: sym, chartData: [], currentPrice: 0 });
     get().connect();
   },
@@ -91,7 +90,6 @@ export const useMarketStore = create<MarketState>((set, get) => ({
         const label =
           !lastLabeled || lastLabeled.label !== timeString ? timeString : "";
         const next = [...state.chartData, { value: price, label }];
-
         return {
           chartData:
             next.length > MAX_DATA_POINTS
@@ -106,7 +104,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
       ws = new WebSocket(`wss://ws.finnhub.io?token=${apiKey}`);
 
       ws.onopen = () => {
-        console.log(`📈 Estado Global: Conectado a ${activeSymbol.symbol}`);
+        console.log(`📈 Connected to ${activeSymbol.symbol}`);
         reconnectAttempts = 0;
         set({ isConnecting: false });
         ws?.send(
@@ -123,7 +121,6 @@ export const useMarketStore = create<MarketState>((set, get) => ({
             response.data.length > 0
           ) {
             const latestTrade = response.data[response.data.length - 1];
-
             pendingPrice = latestTrade.p;
 
             const now = Date.now();
@@ -133,12 +130,12 @@ export const useMarketStore = create<MarketState>((set, get) => ({
             }
           }
         } catch (e) {
-          console.warn("Failed to parse WS message", e);
+          console.warn("Failed to parse WebSocket message:", e);
         }
       };
 
       ws.onerror = (error) => {
-        console.error("❌ Error en WebSocket Global:", error);
+        console.error("❌ WebSocket error:", error);
         ws?.close();
       };
 
@@ -146,16 +143,13 @@ export const useMarketStore = create<MarketState>((set, get) => ({
         reconnectAttempts += 1;
         if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
           console.warn(
-            `🚫 Max reconexiones alcanzadas para ${activeSymbol.symbol}`,
+            `🚫 Max reconnect attempts reached for ${activeSymbol.symbol}.`,
           );
           set({ isConnecting: false });
           return;
         }
-
         const delay = Math.min(3000 * reconnectAttempts, 15000);
-        console.log(
-          `🔌 Conexión global perdida. Reconectando en ${delay / 1000}s...`,
-        );
+        console.log(`🔌 WebSocket closed. Reconnecting in ${delay / 1000}s...`);
         reconnectTimeout = setTimeout(connectWebSocket, delay);
       };
     };

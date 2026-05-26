@@ -1,89 +1,72 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  FlatList,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useCreateAlert, SYMBOL_COLORS } from "../hooks/useCreateAlert";
+import { AlertItem } from "../services/alertsService";
 
-const AVAILABLE_SYMBOLS = [
-  "BINANCE:BTCUSDT",
-  "BINANCE:ETHUSDT",
-  "BINANCE:SOLUSDT",
-  "BINANCE:BNBUSDT",
-];
+// ─── Alert History Item ───────────────────────────────────────────────────────
 
-const SYMBOL_COLORS: Record<string, string> = {
-  "BINANCE:BTCUSDT": "#F7931A",
-  "BINANCE:ETHUSDT": "#627EEA",
-  "BINANCE:SOLUSDT": "#9945FF",
-  "BINANCE:BNBUSDT": "#F3BA2F",
+const AlertHistoryItem = ({ item }: { item: AlertItem }) => {
+  const color = SYMBOL_COLORS[item.symbol] || "#3b82f6";
+  const shortSymbol = item.symbol.replace("BINANCE:", "");
+  const date = new Date(item.createdAt).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return (
+    <View className="flex-row items-center py-3 border-b border-slate-800">
+      <View
+        className="w-2 h-2 rounded-full mr-3"
+        style={{ backgroundColor: color }}
+      />
+      <View className="flex-1">
+        <Text className="text-white font-semibold text-sm">{shortSymbol}</Text>
+        <Text className="text-slate-500 text-xs mt-0.5">{date}</Text>
+      </View>
+      <View className="items-end">
+        <Text className="text-white font-bold text-sm">
+          ${item.targetPrice.toLocaleString("en-US")}
+        </Text>
+        <View className="flex-row items-center mt-0.5">
+          <View className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1" />
+          <Text className="text-emerald-400 text-xs font-medium">Active</Text>
+        </View>
+      </View>
+    </View>
+  );
 };
 
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+
 export default function AlertsScreen() {
-  const [symbol, setSymbol] = useState(AVAILABLE_SYMBOLS[0]);
-  const [targetPrice, setTargetPrice] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchUserId = async () => {
-      const storedId = await AsyncStorage.getItem("userId");
-      if (storedId) setUserId(storedId);
-    };
-    fetchUserId();
-  }, []);
-
-  const handleCreateAlert = async () => {
-    if (!targetPrice.trim() || isNaN(Number(targetPrice))) {
-      Alert.alert(
-        "Invalid price",
-        "Please enter a valid numeric target price.",
-      );
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-
-      const response = await fetch(`${apiUrl}/api/alerts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: userId,
-          symbol: symbol,
-          targetPrice: Number(targetPrice),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        Alert.alert(
-          "Alert Created!",
-          `You'll be notified when ${symbol.replace("BINANCE:", "")} reaches $${targetPrice}`,
-        );
-        setTargetPrice("");
-      } else {
-        Alert.alert("Error", data.message || "Could not create alert");
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Connection Error", "Could not connect to the server.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    symbol,
+    targetPrice,
+    setTargetPrice,
+    isLoading,
+    isDropdownOpen,
+    setIsDropdownOpen,
+    handleCreateAlert,
+    handleSelectSymbol,
+    availableSymbols,
+    alerts,
+    isFetchingAlerts,
+    fetchAlerts,
+  } = useCreateAlert();
 
   const activeColor = SYMBOL_COLORS[symbol] || "#3b82f6";
   const shortLabel = symbol.replace("BINANCE:", "");
@@ -97,7 +80,15 @@ export default function AlertsScreen() {
         <ScrollView
           contentContainerStyle={{ padding: 20 }}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={isFetchingAlerts}
+              onRefresh={fetchAlerts}
+              tintColor="#3b82f6"
+            />
+          }
         >
+          {/* Header */}
           <View className="mb-6">
             <Text className="text-white text-2xl font-bold tracking-tight">
               Price Alerts
@@ -107,6 +98,7 @@ export default function AlertsScreen() {
             </Text>
           </View>
 
+          {/* Active asset preview */}
           <View className="flex-row items-center mb-6 bg-slate-900 rounded-2xl px-4 py-3 border border-slate-800">
             <View
               className="w-2.5 h-2.5 rounded-full mr-3"
@@ -120,10 +112,12 @@ export default function AlertsScreen() {
             </Text>
           </View>
 
+          {/* Create Alert Card */}
           <View
             className="bg-slate-900 rounded-3xl p-5 border border-slate-800"
             style={{ zIndex: 10 }}
           >
+            {/* Symbol Dropdown */}
             <View className="mb-5" style={{ zIndex: 50 }}>
               <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
                 Asset to monitor
@@ -134,12 +128,12 @@ export default function AlertsScreen() {
                 onPress={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 flex-row justify-between items-center"
               >
-                <View className="flex-row items-center gap-2.5">
+                <View className="flex-row items-center">
                   <View
-                    className="w-2 h-2 rounded-full"
+                    className="w-2 h-2 rounded-full mr-2"
                     style={{ backgroundColor: activeColor }}
                   />
-                  <Text className="text-white text-base font-semibold ml-2">
+                  <Text className="text-white text-base font-semibold">
                     {shortLabel}
                   </Text>
                 </View>
@@ -153,7 +147,7 @@ export default function AlertsScreen() {
                   className="absolute left-0 right-0 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden"
                   style={{ top: 76, zIndex: 100 }}
                 >
-                  {AVAILABLE_SYMBOLS.map((item, index) => {
+                  {availableSymbols.map((item, index) => {
                     const itemLabel = item.replace("BINANCE:", "");
                     const itemColor = SYMBOL_COLORS[item] || "#3b82f6";
                     const isActive = symbol === item;
@@ -161,14 +155,11 @@ export default function AlertsScreen() {
                       <TouchableOpacity
                         key={item}
                         className={`px-4 py-3.5 flex-row items-center ${
-                          index !== AVAILABLE_SYMBOLS.length - 1
+                          index !== availableSymbols.length - 1
                             ? "border-b border-slate-700"
                             : ""
                         } ${isActive ? "bg-slate-700" : ""}`}
-                        onPress={() => {
-                          setSymbol(item);
-                          setIsDropdownOpen(false);
-                        }}
+                        onPress={() => handleSelectSymbol(item)}
                       >
                         <View
                           className="w-2 h-2 rounded-full mr-3"
@@ -193,6 +184,7 @@ export default function AlertsScreen() {
               )}
             </View>
 
+            {/* Price Input */}
             <View className="mb-6">
               <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
                 Target Price (USD)
@@ -228,11 +220,45 @@ export default function AlertsScreen() {
               )}
             </TouchableOpacity>
           </View>
-          <View className="mt-4 flex-row items-center px-1">
+
+          <View className="mt-4 mb-6 px-1">
             <Text className="text-slate-600 text-xs leading-relaxed">
               🔔 Push notifications will be sent when the price target is
               reached.
             </Text>
+          </View>
+
+          {/* Alert History */}
+          <View className="bg-slate-900 rounded-3xl p-5 border border-slate-800">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-white font-bold text-base">
+                Active Alerts
+              </Text>
+              {isFetchingAlerts ? (
+                <ActivityIndicator size="small" color="#3b82f6" />
+              ) : (
+                <View className="bg-blue-500 px-2.5 py-0.5 rounded-full">
+                  <Text className="text-white text-xs font-bold">
+                    {alerts.length}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {alerts.length === 0 && !isFetchingAlerts ? (
+              <View className="items-center py-6">
+                <Text className="text-slate-600 text-sm">
+                  No active alerts yet.
+                </Text>
+                <Text className="text-slate-700 text-xs mt-1">
+                  Set one above to get started.
+                </Text>
+              </View>
+            ) : (
+              alerts.map((alert) => (
+                <AlertHistoryItem key={alert._id} item={alert} />
+              ))
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

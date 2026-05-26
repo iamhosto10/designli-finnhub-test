@@ -1,78 +1,19 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  PermissionsAndroid,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import messaging from "@react-native-firebase/messaging";
+import { useLogin } from "../hooks/useLogin";
 
 export default function LoginScreen({ navigation }: any) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Incomplete fields", "Please enter your email and password.");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      if (Platform.OS === "android" && Platform.Version >= 33) {
-        await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-        );
-      }
-
-      await messaging().requestPermission();
-
-      const fcmToken = await messaging().getToken();
-      console.log("FCM Token:", fcmToken);
-
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-
-      const response = await fetch(`${apiUrl}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          password: password,
-          fcmToken: fcmToken,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        await AsyncStorage.setItem("userToken", data.token);
-        await AsyncStorage.setItem("userId", data.userId);
-        navigation.replace("Main");
-      } else {
-        Alert.alert(
-          "Authentication Error",
-          data.message || "Invalid credentials",
-        );
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert(
-        "Connection Error",
-        "Could not connect to the server. Make sure your backend is running.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { email, setEmail, password, setPassword, isLoading, handleLogin } =
+    useLogin(navigation);
 
   return (
     <SafeAreaView className="flex-1 bg-slate-950">
