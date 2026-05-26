@@ -8,7 +8,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import authRoutes from "./routes/authRoutes.js";
 import alertRoutes from "./routes/alertRoutes.js";
-import { initFinnhubWebSocket, checkAlerts } from "./services/finnhub.js";
+import { initFinnhubWebSocket } from "./services/finnhub.js";
 import {
   notFoundHandler,
   globalErrorHandler,
@@ -42,29 +42,6 @@ app.use("/api/alerts", alertRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ success: true, message: "Server is running successfully." });
-});
-
-/**
- * Simulation endpoint for testing push notifications without relying
- * on Finnhub's real-time data or free-tier rate limits.
- *
- * @example
- * curl -X POST http://localhost:3000/api/alerts/simulate-price \
- *   -H "Content-Type: application/json" \
- *   -d '{"symbol":"BINANCE:BTCUSDT", "price": 200000}'
- */
-app.post("/api/alerts/simulate-price", async (req, res, next) => {
-  try {
-    const { symbol, price } = req.body;
-    console.log(`🔮 Simulating price for ${symbol}: $${price}`);
-    await checkAlerts(symbol, Number(price));
-    res.json({
-      success: true,
-      message: `Simulation executed for ${symbol} at $${price}`,
-    });
-  } catch (error) {
-    next(error);
-  }
 });
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
