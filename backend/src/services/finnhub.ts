@@ -1,11 +1,14 @@
 import WebSocket from "ws";
-import { getMessaging } from "firebase-admin/messaging";
 import Alert from "../models/Alert.js";
-import * as admin from "firebase-admin";
 import { notificationQueue } from "../queues/notificationQueue.js";
 
 let reconnectTimeout: NodeJS.Timeout | null = null;
 
+/**
+ * Initializes the Finnhub WebSocket connection and subscribes to
+ * all tracked trading symbols. Implements auto-reconnect with a
+ * 5-second delay on unexpected disconnections.
+ */
 export const initFinnhubWebSocket = () => {
   if (reconnectTimeout) {
     clearTimeout(reconnectTimeout);
@@ -14,15 +17,14 @@ export const initFinnhubWebSocket = () => {
 
   const token = process.env.FINNHUB_API_KEY;
   if (!token) {
-    console.error("❌ Missing FINNHUB_API_KEY in the .env file");
+    console.error("❌ Missing FINNHUB_API_KEY in the .env file.");
     return;
   }
 
   const ws = new WebSocket(`wss://ws.finnhub.io?token=${token}`);
 
   ws.on("open", () => {
-    console.log("📈 Connected to Finnhub WebSocket");
-
+    console.log("📈 Connected to Finnhub WebSocket.");
     ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:BTCUSDT" }));
     ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:ETHUSDT" }));
     ws.send(JSON.stringify({ type: "subscribe", symbol: "BINANCE:SOLUSDT" }));
@@ -41,39 +43,44 @@ export const initFinnhubWebSocket = () => {
   });
 
   ws.on("error", (error) => {
-    console.error("❌ Error in Finnhub WebSocket:", error);
+    console.error("❌ Finnhub WebSocket error:", error);
     ws.close();
   });
 
   ws.on("close", () => {
+    console.warn("🔌 Finnhub WebSocket closed. Reconnecting in 5s...");
     reconnectTimeout = setTimeout(initFinnhubWebSocket, 5000);
   });
 };
 
+/**
+ * Evaluates all active alerts for a given symbol against the current price.
+ * Uses an atomic findOneAndUpdate to prevent duplicate notifications
+ * caused by concurrent trade events hitting the same alert.
+ */
 export const checkAlerts = async (symbol: string, currentPrice: number) => {
   try {
     const triggeredAlerts = await Alert.find({
-      symbol: symbol,
+      symbol,
       isActive: true,
       targetPrice: { $lte: currentPrice },
     });
 
     for (const alert of triggeredAlerts) {
+      // Atomically lock the alert to prevent race conditions
       const lockedAlert = await Alert.findOneAndUpdate(
         { _id: alert._id, isActive: true },
         { $set: { isActive: false } },
         { new: true },
       ).populate("userId");
 
-      if (!lockedAlert) {
-        continue;
-      }
+      if (!lockedAlert) continue;
 
       console.log(
-        `🚨 Target Triggered! ${symbol} reached $${currentPrice} (Target: $${lockedAlert.targetPrice})`,
+        `🚨 Alert triggered: ${symbol} reached $${currentPrice} (target: $${lockedAlert.targetPrice})`,
       );
 
-      const user: any = lockedAlert.userId;
+      const user = lockedAlert.userId as any;
       const fcmToken = user?.fcmToken;
 
       if (fcmToken) {
@@ -82,28 +89,22 @@ export const checkAlerts = async (symbol: string, currentPrice: number) => {
           {
             fcmToken,
             title: "📈 Target Reached!",
-            body: `The asset ${symbol.replace("BINANCE:", "")} has just surpassed your target price of $${lockedAlert.targetPrice}. Current price: $${currentPrice}`,
+            body: `${symbol.replace("BINANCE:", "")} surpassed your target of $${lockedAlert.targetPrice}. Current price: $${currentPrice}`,
           },
           {
             removeOnComplete: true,
             attempts: 3,
-            backoff: {
-              type: "fixed",
-              delay: 5000,
-            },
+            backoff: { type: "fixed", delay: 5000 },
           },
         );
-
-        console.log(
-          `📱 Push notification queued for user ${user.email} with token ${fcmToken}`,
-        );
+        console.log(`📱 Push notification queued for ${user.email}.`);
       } else {
-        console.log(
-          `⚠️ The user does not have an fcmToken saved. Push notification not queued.`,
+        console.warn(
+          `⚠️ No FCM token found for user ${user.email}. Skipping push.`,
         );
       }
     }
   } catch (error) {
-    console.error("Error checking alerts:", error);
+    console.error("❌ Error checking alerts:", error);
   }
 };

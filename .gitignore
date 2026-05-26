@@ -6,8 +6,10 @@ mobile/node_modules/
 # Entornos y Variables (¡CRÍTICO!)
 .env
 backend/.env
+backend/backend.env
 mobile/.env
 mobile/src/.env
+mobile/mobile.env
 
 
 # Llaves Privadas (¡CRÍTICO!)
